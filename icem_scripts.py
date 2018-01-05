@@ -128,7 +128,7 @@ def export_stl(inputfile):
     output = open ('temp.tcl','w')
     output.write(script_to_run)
     output.close()
-    return output
+    return
     
 def extrude_mesh(inputdata):
         

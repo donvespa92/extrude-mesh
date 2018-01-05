@@ -1,5 +1,4 @@
 import tkinter as tk
-from tkinter import filedialog
 from tkinter.font import Font
 from tkinter import messagebox
 import os
@@ -13,8 +12,8 @@ class MainApplication:
         self.master = master
         self.master.protocol("WM_DELETE_WINDOW", self.cmd_exit)
         self.mainframe = tk.Frame(self.master)
-        self.entrylist = [] 
         self.ns_import = False
+        self.check = tk.BooleanVar()
         self.temp_files = []   
         
         self.gui_set_paths()
@@ -33,7 +32,8 @@ class MainApplication:
         self.entry_mesh = tk.Entry(
                 self.frame_paths,
                 width=50,
-                font=self.font)
+                font=self.font,
+                state='disabled')
         self.label_mesh = tk.Label(
                 self.frame_paths,
                 text='Mesh',
@@ -41,7 +41,8 @@ class MainApplication:
         self.entry_output_folder = tk.Entry(
                 self.frame_paths,
                 width=50,
-                font=self.font)
+                font=self.font,
+                state='disabled')
         self.label_output_folder = tk.Label(
                 self.frame_paths,
                 text='Output folder',font=self.font) 
@@ -55,9 +56,6 @@ class MainApplication:
                 text='Select',
                 font=self.font,
                 command=self.cmd_output_folder)
-        
-        self.entrylist.append(self.entry_mesh)
-        self.entrylist.append(self.entry_output_folder)
     
     def gui_set_names(self):
         self.frame_names = tk.Frame(self.mainframe,bd=2,relief='groove')
@@ -79,9 +77,7 @@ class MainApplication:
                 font=self.font)
         
         self.entry_base_name.insert('end','base-name-for-wall-and-domain-name')
-        self.entrylist.append(self.entry_prj_name)
-        self.entrylist.append(self.entry_base_name)
-    
+           
     def gui_set_optionmenu(self):
         self.frame_om = tk.Frame(self.mainframe,bd=2,relief='groove',padx=5, pady=5)
         self.label_optionmenu = tk.Label(
@@ -125,13 +121,7 @@ class MainApplication:
                 font=self.font,
                 height=2,
                 command=self.cmd_extrude)
-        self.button_help = tk.Button(
-                self.frame_buttons,
-                text='Help',
-                font=self.font,
-                height=2,
-                command=self.cmd_help)
-            
+        
     def gui_set_mesh_params(self):
         self.frame_params = tk.Frame(self.mainframe,bd=2,relief='groove')
         self.label_spacing = tk.Label(
@@ -159,17 +149,11 @@ class MainApplication:
                 width=30,
                 font=self.font)
         
-        self.entrylist.append(self.entry_spacing)
-        self.entrylist.append(self.entry_ratio)
-        self.entrylist.append(self.entry_length)
-        
         self.entry_spacing.insert('end','0.00075')
         self.entry_ratio.insert('end','1.03')
         
     def gui_set_grid(self):   
         self.mainframe.grid(row=0,column=0,sticky = 'NSEW',padx=5, pady=5)
-        #self.master.columnconfigure(0,weight=1,minsize=500)
-        #self.mainframe.columnconfigure(0,weight=1,minsize=500)
         
         # --- Paths
         self.frame_paths.grid(row=0,column=0,sticky = 'NSEW',padx=5, pady=5)
@@ -204,7 +188,6 @@ class MainApplication:
         # --- Buttons
         self.frame_buttons.grid(row=5,column=0,sticky = 'NSEW',padx=5, pady=5)
         self.button_extrude.pack(fill='both')
-        #self.button_help.grid(row=1,column=1,sticky = 'WE',padx=5, pady=2)
         
     def cmd_import_mesh(self):
         temp = tk.filedialog.askopenfilename(
@@ -219,11 +202,17 @@ class MainApplication:
             self.mesh_file_name = os.path.basename(self.mesh_file_path)
             self.mesh_file_dir_name = os.path.dirname(self.mesh_file_path)
             self.mesh_file_type = splitext(self.mesh_file_path)[1]
+            
+            self.entry_mesh.config(state='normal')
             self.entry_mesh.delete(0,'end')
             self.entry_mesh.insert(0,self.mesh_file_path)
+            self.entry_mesh.config(state='disabled')
+            
             self.output_folder = self.mesh_file_dir_name
+            self.entry_output_folder.config(state='normal')
             self.entry_output_folder.delete(0,'end')
             self.entry_output_folder.insert(0,self.mesh_file_dir_name)
+            self.entry_output_folder.config(state='disabled')
             
             self.temp_files = ic.import_named_selections(self.mesh_file_path,self.wdir)       
             os.system('icemcfd -batch -script temp.tcl')
@@ -246,7 +235,17 @@ class MainApplication:
             self.entry_output_folder.insert(0,self.output_folder)
     
     def cmd_extrude(self):
-        self.do_checks()
+        self.check_ns_import()
+        if self.check == True:
+            self.check_paths()
+        if self.check == True:
+            self.check_names()
+        if self.check == True:
+            self.check_params()
+        if self.check == True:
+            self.check_type()
+        if self.check == True:
+            self.check_parity()
         
         if (self.check == True):       
             # --- Set params for extrude
@@ -295,7 +294,7 @@ class MainApplication:
         else: return (42)
     
     def cmd_get_normal(self):
-        script_to_run = ic.export_stl(self.mesh_file_path)
+        ic.export_stl(self.mesh_file_path)
         os.system('icemcfd -batch -script temp.tcl')
         os.remove('temp.tcl')
         
@@ -309,10 +308,6 @@ class MainApplication:
                     self.normal = line.split(' ')
                     break
         
-    def cmd_help(self):
-        return
-           
-        
     def cmd_delete_temp(self):
         if self.temp_files:
             for file in self.temp_files:
@@ -320,29 +315,52 @@ class MainApplication:
                     os.remove(file)
         else:
             return
-                     
-    def do_checks(self):
-        self.check = True
-        for entry in self.entrylist:
-            if not entry.get():
-                messagebox.showerror("Error","Fill all entries!")
-                self.check = False
-                return
-                break    
-        
+    
+    def check_ns_import(self):
         if self.ns_import == False:
             self.check = False
             messagebox.showerror("Error","No named selections are imported!")
-            return
-
-        for entry in [self.entry_length,self.entry_ratio,self.entry_spacing]:  
-            try:
-                float(entry.get())
-                return True
-            except ValueError:
-                messagebox.showerror("Error","Params are not numeric!")
-                self.check = False
-                return False
+        else:
+            self.check = True
+             
+    def check_paths(self):
+        if not self.entry_mesh.get() or not self.entry_output_folder.get():
+            messagebox.showerror("Error","Select paths for mesh to extrude and output folder!")
+            self.check = False
+        else:
+            self.check = True
+        
+    def check_names(self):
+        if not self.entry_prj_name.get() or not self.entry_base_name.get():
+            messagebox.showerror("Error","Type project name and base name!")
+            self.check = False
+        else:
+            self.check = True
+        
+    def check_params(self):
+        if not self.entry_spacing.get() or not self.entry_ratio.get() or not self.entry_length.get():
+            messagebox.showerror("Error","Fill all parameters of extrusion!")
+            self.check = False
+        else:
+            self.check = True
+        
+    def check_type(self):
+        try :
+            float(self.entry_ratio.get())
+            float(self.entry_spacing.get())
+            float(self.entry_length.get())
+            self.check = True
+        except ValueError:
+            messagebox.showerror("Error","Parameters must be numeric!")
+            self.check = False
+            
+    def check_parity(self):
+        if float(self.entry_ratio.get())>0 and float(self.entry_spacing.get())>0 and float(self.entry_length.get())>0:
+            self.check = True
+        else:
+            messagebox.showerror("Error","Parameters must be positive!")
+            self.check = False
+            
                
 def main():
     root = tk.Tk()
