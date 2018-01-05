@@ -15,7 +15,8 @@ class MainApplication:
         self.mainframe = tk.Frame(self.master)
         self.entrylist = [] 
         self.ns_import = False
-             
+        self.temp_files = []   
+        
         self.gui_set_paths()
         self.gui_set_names()
         self.gui_set_mesh_params()
@@ -317,6 +318,8 @@ class MainApplication:
             for file in self.temp_files:
                 if os.path.exists(file):
                     os.remove(file)
+        else:
+            return
                      
     def do_checks(self):
         self.check = True
